@@ -1,0 +1,65 @@
+name: BUILD GLINET AX1800
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-glinet-axt1800.yml'
+      - 'axt1800'
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 1 * *'  # Run at 00:00 on the first day of every month
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+    
+    - name: Update package list
+      run: sudo apt update
+
+    - name: Install dependencies
+      run: |
+        sudo apt install -y device-tree-compiler g++ ncurses-dev python \
+                            asciidoc bash bc binutils bzip2 fastjar flex gawk \
+                            gcc genisoimage gettext git intltool jikespg \
+                            libgtk2.0-dev libncurses5-dev libssl-dev make \
+                            mercurial patch perl-modules python2.7-dev rsync \
+                            ruby sdcc subversion unzip util-linux wget xsltproc \
+                            zlib1g-dev gh jq gzip
+
+    - name: Clone Glbuilder Repository
+      env:
+        PAT: ${{ secrets.PAT }}
+      run: |
+        git clone https://x-access-token:${PAT}@github.com/gl-inet/glbuilder.git glbuilder
+
+    - name: Copy build config to Glbuilder Repository
+      run: |
+        cp ./axt1800/gl-axt1800.config glbuilder/.config
+
+    - name: Fetch openclash
+      run: |
+        LATEST_TAG=$(gh release list --repo vernesong/OpenClash --limit 1 --json tagName --jq '.[0].tagName')
+        curl -L -o ./glbuilder/customer/ipk/luci-app-openclash_$LATEST_TAG_all.ipk \
+        https://github.com/vernesong/OpenClash/releases/download/$LATEST_TAG/luci-app-openclash_$LATEST_TAG_all.ipk
+    
+    - name: Fetch clash_meta
+      run: |
+        mkdir -p ./glbuilder/files/etc/openclash/core/
+        mkdir -p ./tmp
+        LATEST_TAG=$(curl -s "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" | jq -r '.tag_name')
+        curl -L -o ./tmp/clash_meta.tar.gz \
+        https://github.com/MetaCubeX/mihomo/releases/download/$LATEST_TAG/mihomo-linux-armv5-$LATEST_TAG.gz
+        gzip -d ./tmp/clash_meta.tar.gz
+        mv ./tmp/clash_meta.tar ./glbuilder/files/etc/openclash/core/clash_meta
+        chmod +x ./glbuilder/files/etc/openclash/core/clash_meta
+    
+    - name: Build firmware
+      run: |
+        cd glbuilder
+        make -j$(nproc)
