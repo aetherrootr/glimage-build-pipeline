@@ -23,14 +23,14 @@ jobs:
 
     - name: Get Current Timestamp
       id: tag
-      run: echo "TAG=$(date +'%Y%m%d-%H%M%S')-gl-axt1800" >> $GITHUB_ENV
+      run: echo "CURRENT_TIME=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
 
     - name: Create and Push Git Tag
       run: |
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
-        git tag $TAG
-        git push origin $TAG
+        git tag -f gl-axt1800
+        git push origin gl-axt1800 --force
       env:
         TAG: ${{ env.TAG }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,9 +83,9 @@ jobs:
     - name: Create Release and Upload Artifacts
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ env.TAG }}
-        name: "Release - ${{ env.TAG }}"
-        body: "🚀 Automated Release created at ${{ env.TAG }}"
+        tag_name: "gl-axt1800"
+        name: "Release build gl-axt1800"
+        body: "🚀 Automated Release created at gl-axt1800, build in ${{ env.CURRENT_TIME }}"
         draft: false
         prerelease: false
         files: |
